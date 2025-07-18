@@ -1,30 +1,36 @@
+import uuid
 from django.db import models
 from django.contrib.auth.models import AbstractUser
 from django.utils import timezone
 
 
 class CustomUser(AbstractUser):
-    # Extend this class later if needed
-    pass
+    user_id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    email = models.EmailField(unique=True)
+    phone_number = models.CharField(max_length=20, blank=True, null=True)
 
-
-class Thread(models.Model):
-    user1 = models.ForeignKey(CustomUser, related_name='thread_user1', on_delete=models.CASCADE)
-    user2 = models.ForeignKey(CustomUser, related_name='thread_user2', on_delete=models.CASCADE)
-    created_at = models.DateTimeField(auto_now_add=True)
-
-    class Meta:
-        unique_together = ['user1', 'user2']
+    REQUIRED_FIELDS = ['username', 'first_name', 'last_name', 'phone_number']
+    USERNAME_FIELD = 'email'
 
     def __str__(self):
-        return f"Thread between {self.user1.username} and {self.user2.username}"
+        return f"{self.first_name} {self.last_name} ({self.email})"
+
+
+class Conversation(models.Model):
+    conversation_id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    participants = models.ManyToManyField(CustomUser, related_name='conversations')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Conversation {self.conversation_id}"
 
 
 class Message(models.Model):
-    thread = models.ForeignKey(Thread, related_name='messages', on_delete=models.CASCADE)
+    message_id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     sender = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
-    content = models.TextField()
-    timestamp = models.DateTimeField(default=timezone.now)
+    conversation = models.ForeignKey(Conversation, on_delete=models.CASCADE)
+    message_body = models.TextField()
+    sent_at = models.DateTimeField(default=timezone.now)
 
     def __str__(self):
-        return f"Message from {self.sender.username} at {self.timestamp}"
+        return f"Message {self.message_id} from {self.sender.email}"
