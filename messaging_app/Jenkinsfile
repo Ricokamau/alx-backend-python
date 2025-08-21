@@ -1,0 +1,60 @@
+pipeline {
+    agent any  // Run on any available agent (Jenkins node)
+
+    environment {
+        // Define environment variables if needed, e.g., for Python paths
+        PYTHONPATH = "${WORKSPACE}"
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                // Pull code from GitHub
+                git branch: 'main',  // Change to your branch if not main
+                    credentialsId: 'github-credentials',  // Use the ID from Step 0.3
+                    url: 'https://github.com/Ricokamau/alx-backend-python.git'  // Replace with your actual repo URL
+                // If the messaging_app is a subdirectory, navigate if needed, but Jenkins checks out the root
+            }
+        }
+
+        stage('Install Dependencies') {
+            steps {
+                // Assuming the app uses a virtualenv and requirements.txt in messaging_app/
+                dir('messaging_app') {  // Enter the directory
+                    sh 'python3 -m venv venv'  // Create virtualenv
+                    sh '. venv/bin/activate && pip install -r requirements.txt'  // Install deps (ensure requirements.txt exists)
+                    // If using ShiningPanda for Python tools:
+                    // pythonBuilder python: 'Python 3.x', commands: 'pip install -r requirements.txt'
+                }
+            }
+        }
+
+        stage('Run Tests') {
+            steps {
+                dir('messaging_app') {
+                    sh '. venv/bin/activate && pytest --junitxml=test-report.xml'  // Run pytest and generate XML report
+                }
+            }
+        }
+
+        stage('Generate Report') {
+            steps {
+                // Archive the test report for Jenkins to display
+                junit 'messaging_app/test-report.xml'  // Makes the report visible in Jenkins UI
+            }
+        }
+    }
+
+    post {
+        always {
+            // Clean up workspace after build
+            cleanWs()
+        }
+        success {
+            echo 'Pipeline completed successfully!'
+        }
+        failure {
+            echo 'Pipeline failed. Check logs.'
+        }
+    }
+}
